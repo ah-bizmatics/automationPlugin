@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Interaction Logger</title>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+    }
+
+    .container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        max-width: 800px;
+        margin-top: 20px;
+    }
+
+    .container > div {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    h2 {
+        margin-top: 0;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div>
+        <h2>Checkboxes</h2>
+        <label for="checkbox1"><input type="checkbox" id="checkbox1"> Checkbox 1</label><br>
+        <label for="checkbox2"><input type="checkbox" id="checkbox2"> Checkbox 2</label><br>
+        <label for="checkbox3"><input type="checkbox" id="checkbox3"> Checkbox 3</label><br>
+
+        <h2>Text Fields</h2>
+        <label for="textfield1">Text Field 1: </label><input type="text" id="textfield1"><br>
+        <label for="textfield2">Text Field 2: </label><input type="text" id="textfield2"><br>
+        <label for="textfield3">Text Field 3: </label><input type="text" id="textfield3"><br>
+        <label for="textfield4">Text Field 4: </label><input type="text" id="textfield4"><br>
+        <label for="textfield5">Text Field 5: </label><input type="text" id="textfield5"><br>
+
+        <h2>Text Areas</h2>
+        <label for="textarea1">Text Area 1: </label><textarea id="textarea1"></textarea><br>
+        <label for="textarea2">Text Area 2: </label><textarea id="textarea2"></textarea><br>
+    </div>
+
+    <div>
+        <h2>Radio Buttons</h2>
+        <label for="radio1"><input type="radio" name="radioGroup" id="radio1" value="option1"> Radio 1</label><br>
+        <label for="radio2"><input type="radio" name="radioGroup" id="radio2" value="option2"> Radio 2</label><br>
+
+        <h2>Dropdowns</h2>
+        <label for="dropdown1">Dropdown 1: </label>
+        <select id="dropdown1">
+            <option value="option1">Option 1</option>
+            <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+        </select><br>
+        <label for="dropdown2">Dropdown 2: </label>
+        <select id="dropdown2">
+            <option value="option1">Option 1</option>
+            <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+        </select><br>
+
+        <h2>Fields without ID</h2>
+        <label>Field without ID 1: </label><input type="text" name="noIdField1"><br>
+        <label>Field without ID 2: </label><input type="text" name="noIdField2"><br>
+        <label>Field without ID 3: </label><input type="text" name="noIdField3"><br>
+
+        <h2>Fields without Name</h2>
+        <input type="text"><br>
+        <input type="text"><br>
+        <input type="text"><br>
+    </div>
+</div>
+
+<div class="container">
+    <div>
+        <h2>Buttons</h2>
+        <button id="button1">Button 1</button><br>
+        <button id="button2">Button 2</button><br>
+        <button id="button3">Button 3</button><br>
+    </div>
+
+    <div>
+        <button id="logButton">Download Excel</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script>
+
+    const logInteractions = [];
+    const lastInteraction = {};
+
+    document.addEventListener('DOMContentLoaded', attachEventListeners);
+
+    document.getElementById('logButton').addEventListener('click', function()
+    {
+        const wb = XLSX.utils.book_new();
+        wb.Props = {
+            Title: "User Interactions",
+            Subject: "Logged Interactions",
+            Author: "Your Name",
+            CreatedDate: new Date()
+        };
+        // Add "Interactions" worksheet
+        wb.SheetNames.push("Interactions");
+        const ws = XLSX.utils.json_to_sheet(logInteractions);
+        wb.Sheets["Interactions"] = ws;
+
+        // Add "Data" worksheet
+        wb.SheetNames.push("Data");
+        const dataRows = [];
+        const columns = Array.from(new Set(logInteractions.map(interaction => interaction.Data_column)));
+        dataRows.push(columns);
+
+        const rowData = {};
+        logInteractions.forEach(interaction => {
+            if (interaction['Actual Value'] !== '') {
+                if (!rowData[interaction.Data_column]) {
+                    rowData[interaction.Data_column] = [];
+                }
+                rowData[interaction.Data_column].push(interaction['Actual Value']);
+            }
+        });
+
+        const maxRowLength = Math.max(...Object.values(rowData).map(row => row.length));
+        for (let i = 0; i < maxRowLength; i++) {
+            const row = [];
+            columns.forEach(column => {
+                row.push(rowData[column]?.[i] || ''); // Push actual values or empty string if not available
+            });
+            dataRows.push(row);
+        }
+
+        const dataSheet = XLSX.utils.aoa_to_sheet(dataRows);
+        wb.Sheets["Data"] = dataSheet;
+
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), 'interactions.xlsx');
+    });
+
+    function logInteraction(type, identifier, identifierValue, userAction, dataColumn, actualValue, description)
+    {
+        return {
+            "Type": type,
+            "Identifier": identifier,
+            "Identifier Value": identifierValue,
+            "Index": "",
+            "User_action": userAction,
+            "Data_column": dataColumn,
+            "Property": "",
+            "Screenshot": "",
+            "Description": description,
+            "Actual Value": actualValue
+        };
+    }
+
+    function getElementIdentifier(element)
+    {
+        // if (element.id) return { type: "id", value: element.id };       // first pref to element Id
+        // if (element.name) return { type: "name", value: element.name }; // Second pref to element name
+                                                                        // Third Pref class --needs to be added
+        // return { type: "xpath", value: getElementXPath(element) };      // Got No identifier so Last option is get unique X-Path
+
+        if (element.id)
+        { 
+            // this block will check if more than one Elements with same Id are present
+            // if not then it will return id 
+            var lhea = getAllElementsWithSameAttrUsingXPath(element.id, 'id');
+            if(lhea.length == 1 )
+                return { type: "id", value: element.id };
+        }
+
+        if (element.name)
+        {
+            // this block will check if more than one Elements with same Name are present
+            // if not then it will return name 
+            var lhea = getAllElementsWithSameAttrUsingXPath(element.name, 'name'); 
+            if(lhea.length == 1 )
+                return { type: "name", value: element.name};
+        }
+
+        if (element.class)
+        {
+            // this block will check if more than one Elements with same Name are present
+            // if not then it will return Class 
+            var lhea = getAllElementsWithSameAttrUsingXPath(element.class, 'class');
+            if(lhea.length == 1 )
+                return { type: "class", value: element.class };
+        }
+        
+        var xPath = getShortestXPath(element);
+        return { type: "xpath", value: xPath };
+    }
+
+    function getElementXPath(element) {
+        if (!element || !element.tagName) return '';
+
+        const idx = [...element.parentNode.children].indexOf(element) + 1;
+        return `${getElementXPath(element.parentNode)}/${element.tagName.toLowerCase()}[${idx}]`;
+    }
+
+    function attachEventListeners() {
+        const inputs = document.querySelectorAll('input, textarea, select');
+
+        inputs.forEach(input => {
+            input.addEventListener('change', function(event) {
+                logInteractionEvent(getElementType(input), 'change', 'SET', input);
+            });
+
+            input.addEventListener('click', function(event) {
+                logInteractionEvent(getElementType(input), 'click', 'CLICK', input);
+            });
+        });
+
+        const buttons = document.querySelectorAll('button');
+
+        buttons.forEach(button => {
+            button.addEventListener('click', function(event) {
+                logInteractionEvent('button', 'click', 'CLICK', button);
+            });
+        });
+    }
+
+    function getElementType(element) {
+        return element.type || element.tagName.toLowerCase();
+    }
+
+    function logInteractionEvent(type, eventType, action, element)
+    {
+        const { type: identifier, value: identifierValue } = getElementIdentifier(element);
+        const userAction = action.toLowerCase();
+
+        // const dataColumn = element.id || element.name || getElementXPath(element);
+        var dataColumn = '';
+        if(identifier == 'xpath' && userAction == 'set')
+        {
+            // create a random value to insert into data_column
+            var nameOrIdOrType = element.id || element.name || element.type || element.tagName;
+            // every time this executes user will get new value for data column
+            dataColumn = nameOrIdOrType + (Math.floor(Math.random() * 9000) + 1000); // random 4 digit number
+        }
+        else
+        {
+            dataColumn = element.id || element.name ;
+        }
+
+        let actualValue = '';
+        if (element.type === 'checkbox') {
+            actualValue = element.checked ? element.value : '';
+        } else if (element.type === 'radio' && element.checked) {
+            actualValue = element.value;
+        } else {
+            actualValue = element.value;
+        }
+
+        let description = '';
+        if (element.type === 'checkbox') {
+            const labelForCheckbox = document.querySelector(`label[for="${element.id}"]`);
+            if (labelForCheckbox) {
+                description = labelForCheckbox.textContent;
+            }
+        } else {
+            const label = document.querySelector(`label[for="${element.id}"]`);
+            if (label) {
+                description = label.textContent;
+            }
+        }
+
+        const IdentifierAndLastValue = lastInteraction[dataColumn] || '';
+        var lsaIdAndLv = IdentifierAndLastValue.split('^');
+        var lastIdfrVal = lsaIdAndLv[0];
+        var lastValue =  lsaIdAndLv[1];
+        // if (eventType === 'change' && element.type === 'radio') //commented by Amardeep to store Radio-Btn Click event Log
+        if (eventType === 'click' && element.type === 'radio')
+        {
+            // For radio buttons, only log when it is selected
+            if (element.checked && (identifierValue !== lastIdfrVal || actualValue !== lastValue)) 
+            {
+                lastInteraction[dataColumn] = identifierValue + '^' + actualValue;
+                const interaction = logInteraction(type, identifier, identifierValue, userAction, dataColumn, actualValue, description);
+                logInteractions.push(interaction);
+            }
+        } 
+        else if (eventType === 'change' || (eventType === 'click' && element.type === 'checkbox')) 
+        {
+            // For other inputs, log when the value changes or checkbox is clicked
+            if (identifierValue !== lastIdfrVal || actualValue !== lastValue) {
+                lastInteraction[dataColumn] = identifierValue + '^' + actualValue;
+                const interaction = logInteraction(type, identifier, identifierValue, userAction, dataColumn, actualValue, description);
+                logInteractions.push(interaction);
+            }
+        } 
+        else if (type === 'button')
+        {
+            const interaction = logInteraction(type, identifier, identifierValue, userAction, dataColumn, actualValue, description);
+            logInteractions.push(interaction);
+
+        }
+    }
+
+//---------------------------------------------------------------------
+// added by Amardeep
+ function getShortestXPath(element)
+{
+    // Function to check if XPath points to a unique element
+    function isUniqueXPath(xpath) {
+        try {
+            // Evaluate XPath and check if there's only one matching element
+            var result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            return result.snapshotLength === 1;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Function to generate XPath for the element
+    function generateXPath(node) {
+        // If element is root, return empty string
+        if (node === document.body) {
+            return '';
+        }
+
+        // Determine node position among its siblings
+        var index = 1;
+        var sibling = node.previousSibling;
+        while (sibling) {
+            if (sibling.nodeType === Node.ELEMENT_NODE && sibling.tagName === node.tagName) {
+                index++;
+            }
+            sibling = sibling.previousSibling;
+        }
+
+        // Recursive call to parent to build full XPath
+        return generateXPath(node.parentNode) + '/' + node.tagName.toLowerCase() + '[' + index + ']';
+    }
+
+    // Generate initial XPath for the element
+    var xpath = generateXPath(element);
+
+    // Check if the initial XPath is unique
+    if (isUniqueXPath(xpath)) {
+        return xpath;
+    }
+
+    // If not unique, try different combinations of attributes
+    var attributes = ['id', 'name', 'class', 'type', 'value']; // Add more attributes as needed
+    for (var i = 0; i < attributes.length; i++) 
+    {
+        var attribute = attributes[i];
+        var value = element.getAttribute(attribute);
+        if (value) 
+        {
+            var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '"]';
+            if (isUniqueXPath(xpathWithAttr)) 
+            {
+                return xpathWithAttr;
+            }
+            else
+            {
+                // To detch efficient x-path - Use Logical Operator -> and (refer -> //*[@id='msPt_fname' and @type='text'])
+                if(i < attributes.length )
+                {
+                    for(var j = i + 1; j < attributes.length; j++) // to optimize for loop value of has been set to i+1 
+                    {
+                        var attrToMatch  = attributes[j];
+                        var valueToMatch = element.getAttribute(attrToMatch);
+                        if(valueToMatch)
+                        {
+                            var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '" and @' + attrToMatch + '="' + valueToMatch + '"]';
+                            if (isUniqueXPath(xpathWithAttr)) 
+                            {
+                                return xpathWithAttr;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // If all attempts fail, return the initial XPath
+    return xpath;
+}
+
+// this function will take id, name, class and returns array of elements located on given path
+function getAllElementsWithSameAttrUsingXPath(val, attr)
+{
+    var xpath = '';
+    if(attr == 'id')
+        xpath = `//*[@id='${val}']`;
+    else if(attr == 'name')
+        xpath = `//*[@name='${val}']`;
+    else if(attr == 'class')
+        xpath = `//*[@class='${val}']`;
+
+    var elements = [];
+    var result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    for (var i = 0; i < result.snapshotLength; i++) {
+        elements.push(result.snapshotItem(i));
+    }
+    return elements;
+}
+//---------------------------------------------------------------------
+
+
+
+
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Activity Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+        h1 {
+            font-size: 18px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Activity Tracker</h1>
+    <button id="start-button">Start</button>
+    <button id="stop-button" style="display:none;">Stop and Download</button>
+    <button id="cancel-button" style="display:none;">Cancel</button>
+    <script src="libs/xlsx.full.min.js"></script>
+    <script src="libs/FileSaver.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

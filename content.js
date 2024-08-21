@@ -102,9 +102,6 @@
             element.contentDocument.body.style.border = "5px solid green";
             element.contentDocument.addEventListener('DOMContentLoaded', addEvenListenersToDoc(element.contentDocument), false);
 
-            // to record alert/confirm/prompt
-            // overRideWindowMethods(element);
-
             const callbackIFrameMutation = function(mutationsList, observer) {
                 for (const mutation of mutationsList) 
                 {
@@ -659,26 +656,29 @@
         
         if(logInteractions) // check if logInteractions defined or not
         {
-            // when user clicks on ctrl+/ -> then get last Log entry and set it's Screenshot attribute's data to 'Y'
+            // when user clicks on ctrl+/ -> then get last Log entry and set it's Screenshots attribute's data to 'Y'
             if (event.ctrlKey && event.key === '/') 
             {
-                logInteractions[logInteractions.length - 1 ].Screenshot = 'Y';
+                console.log('Screenshots user action');
+                logInteractions[logInteractions.length - 1 ].Screenshots = 'Y';
                 chrome.storage.local.set({userActivities: logInteractions});
                 return;
             }
             // when user clicks on ctrl+. -> then get last Log entry and set it's User Action attribute's data to 'verify'
             else if (event.ctrlKey && event.key === '.') 
             {
-                logInteractions[logInteractions.length - 1 ].User_action = 'verify';
+                console.log('verify user action');
+                logInteractions[logInteractions.length - 1 ].User_Action = 'verify';
                 chrome.storage.local.set({userActivities: logInteractions});
                 return;
             }
             else if(event.altKey && event.key === 'a') // alertcontains user-action alt+a
             {
                 // this user-action will only get executed if there id previousentry of alerttext user action
-                if(logInteractions[logInteractions.length - 2 ].User_action === 'alerttext')
+                if(logInteractions[logInteractions.length - 2 ].User_Action === 'alerttext')
                 {
-                    logInteractions[logInteractions.length - 2 ].User_action = 'alertcontains';
+                    console.log('alerttext user action');
+                    logInteractions[logInteractions.length - 2 ].User_Action = 'alertcontains';
                     chrome.storage.local.set({userActivities: logInteractions});
                 }
                 return;

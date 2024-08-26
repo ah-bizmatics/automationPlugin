@@ -37,13 +37,13 @@ document.getElementById('start-button').addEventListener('click', () => {
             document.getElementById('stop-button').style.display = 'inline';
             document.getElementById('cancel-button').style.display = 'inline'; 
         }else if (response && response.status === 'error') {
-            resetUserActivities();
+            // resetUserActivities();
             setLogStatus('OFF');
             alert('popup.js -> Error: ' + response.message);
         }
         else
         {
-            resetUserActivities();
+            // resetUserActivities();
             setLogStatus('OFF');
             alert("popup.js -> everything went wrong...Start btn" + response.message);
         }
@@ -52,15 +52,35 @@ document.getElementById('start-button').addEventListener('click', () => {
 
 // Execute this block whenever user clicks on Stop button 
 document.getElementById('stop-button').addEventListener('click', () => {
+
+    // get all active tabs and send message 
+    // gets userActions from localStorage
+    chrome.tabs.query({ active: true }, function(tabs) {
+        tabs.forEach(function(tab) {
+            chrome.tabs.sendMessage(tab.id, { action: 'stopTracking', data: 'getUSerActions' }, function(response) {
+                // if (chrome.runtime.lastError) {
+                //     console.error(`Could not send message to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                // } else {
+                   
+                //     console.log('Response from content script:', response);
+                // }
+                if(response && response.data)
+                {
+                    generateExcel(response.data);
+                }
+            });
+        });
+    });
+
     chrome.runtime.sendMessage({command: 'stopTracking'}, (response) => { // invoke background.js
         setLogStatus('OFF');
 
         if (response.status === 'stopped') 
         {
-            generateExcel(response.data);
-            document.getElementById('start-button').style.display = 'inline';
-            document.getElementById('stop-button').style.display = 'none'; 
-            document.getElementById('cancel-button').style.display = 'none'; 
+           // generateExcel(response.data);
+            document.getElementById('start-button').style.display   = 'inline';
+            document.getElementById('stop-button').style.display    = 'none'; 
+            document.getElementById('cancel-button').style.display  = 'none'; 
         }
         else if (response && response.status === 'error') 
             alert('popup.js -> Error: ' + response.message);
@@ -68,14 +88,14 @@ document.getElementById('stop-button').addEventListener('click', () => {
             alert("popup.js -> everything went wrong...Stop Btn " + response.message);
 
         // clear data in chrome.local.userActivities <- local storage for PlugIn
-        resetUserActivities(); 
+        // resetUserActivities(); 
     });
 });
 
 // Execute this block whenever user clicks on Cancel button 
 document.getElementById('cancel-button').addEventListener('click', () => {
     setLogStatus('OFF');
-    resetUserActivities(); 
+    // resetUserActivities(); 
     document.getElementById('start-button').style.display = 'inline';
     document.getElementById('stop-button').style.display = 'none'; 
     document.getElementById('cancel-button').style.display = 'none';
@@ -199,15 +219,15 @@ function setLogStatus(logStatus)
 }
 
 // set user activities to empty array afterdownload or cancel button clicked
-function resetUserActivities()
-{
-    chrome.storage.local.set({ userActivities: [] }, function() {
-        if (chrome.runtime.lastError) {
-            console.error('popup.js -> resetUserActivities() -> Error setting userActivities:', chrome.runtime.lastError);
-        } else {
-            console.log('popup.js -> resetUserActivities() -> userActivities is set to null');
-        }
-    });
-}
+// function resetUserActivities()
+// {
+//     chrome.storage.sync.set({ userActivities: [] }, function() {
+//         if (chrome.runtime.lastError) {
+//             console.error('popup.js -> resetUserActivities() -> Error setting userActivities:', chrome.runtime.lastError);
+//         } else {
+//             console.log('popup.js -> resetUserActivities() -> userActivities is set to null');
+//         }
+//     });
+// }
 
 

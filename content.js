@@ -2,12 +2,12 @@
     var logInteractions   = [];
     const lastInteraction = {};
     const lastAccessedEle = [];
-    const interactionsToBeAdded = []; // used fort 'attach' useractions
+    // const interactionsToBeAdded = []; // used fort 'attach' useractions
 
     document.body.style.border = "5px solid black";
 
     console.log('content.js -> Started');
-    addOldRecs();
+    // addOldRecs();
     attachEventListeners1();
    
     document.addEventListener('DOMContentLoaded', attachEventListeners1, false);
@@ -63,35 +63,27 @@
     {
         console.log('content.js -> attachEventListeners1()');
 
+        // get all user-actions from localStorage
+        var genSeaUserAct   = localStorage.getItem('UserActions');
+        if(genSeaUserAct != 'null')
+            logInteractions     = JSON.parse(genSeaUserAct); // convert string into object
+        else
+            logInteractions = [];
+
+        var desc = '';
         if(document.URL.includes('GenSearchFrame'))
         {
             let attachTo = document.getElementsByClassName('popupHeaderText')[0].innerText; // text to be inserted into the description 
-            const interaction = logInteraction( '', document.title, 'attach', '', `Attach to ${attachTo} search window.`);
-            console.log(interaction);
-            interactionsToBeAdded.push(interaction);
+            desc = `Attach to ${attachTo} search window.`
         }
         else
-        {
-            // let attachTo = document.getElementsByClassName('popupHeaderText')[0].innerText; // text to be inserted into the description 
-            const interaction = logInteraction( '', document.title, 'attach', '', `Attach to ${document.title}  window.`);
-            console.log(interaction);
-            interactionsToBeAdded.push(interaction);
-        }
+            desc = `Attach to ${document.title}  window.`;
 
-            // Function to inject
-        // const scriptContent = `
-        // window.alert = function(message) {
-        //     console.log("Custom alert from extension: " + message);
-        //     // You can implement more complex logic here, like displaying a custom UI
-        // };
-        // `;
-        // // Create a script element to inject the function
-        // const script = document.createElement('script');
-        // script.textContent = scriptContent;
-
-        // // Inject the script into the page's DOM
-        // (document.head || document.documentElement).appendChild(script);
-        // script.remove();  // Optionally remove the script tag after injecting the content
+        const interaction = logInteraction( '', document.title, 'attach', '', desc);
+        console.log(interaction);
+        // interactionsToBeAdded.push(interaction);
+        logInteractions.push(interaction);
+        localStorage.setItem('UserActions', JSON.stringify(logInteractions));   
 
         addEvenListenersToDoc(document);
 
@@ -349,7 +341,7 @@
                 eventType === 'dynamicverify'   || eventType === 'dynamiccontains'  || 
                 eventType === 'dynamicset'      || eventType === 'isblank'          || 
                 eventType === 'isenable'        || eventType === 'clear'            ||
-                eventType === 'highlight'       || eventType === 'objectexists')
+                eventType === 'highlight'       || eventType === 'objectexist'     )
         {
             // contains user action 'ctrl+i'
             // gettrim user action 'ctrl+]'
@@ -358,7 +350,26 @@
             // dynamicset user action 'ctrl+m'
             // isblank user action ctrl+b
             // isenable user action - ctrl+k
-            console.log(`content.js -> logInteractionEvent() -> ${eventType}` )
+            console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
+
+            if(eventType === 'custom_click')
+                interaction.User_Action = 'click';
+
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'custom_click') // click useraction  -- alt+c -> used when focus needs to be shifted.
+        {
+            console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
+
+            if(eventType === 'custom_click')
+                interaction.User_Action = 'click';
+
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'click' && action === 'capSerVal') // added to capture server side validations like 'Save Successful.'
+        {
+            dataColumn = '';
+            interaction = logInteraction(identifier, identifierValue, 'click', dataColumn, description);
             logAndSetUserActivity(interaction);
         }
     }
@@ -445,9 +456,10 @@
     {
         var description = '';
         if(eventType === 'change')
-        {
             eventType = 'chang';
-        }
+                
+        if(eventType === 'custom_click')
+            eventType = 'click'
       
         if(element.type === 'text' || element.type === 'password' || element.type === 'textarea')
         {
@@ -462,7 +474,9 @@
                     </tr>
                 </table>
             */
-            let desc = element.parentElement.previousElementSibling.textContent.trim()
+            let desc = element.parentElement.previousElementSibling.textContent.trim();
+            if(desc === '')
+                desc = element.id || element.title || element.placeholder;
             description = eventType + 'ed value in \'' + desc + '\' Field.';
         }
         else if(element.type === 'button')
@@ -507,6 +521,29 @@
                     divEle.addEventListener('scroll', handleDivScroll);
                 }
             });
+
+            // actionMessages --> to fetch server side validation like -> Save Successful.
+            // popupHeaderText --> to fetch the title of the gensearch
+            doc.querySelectorAll('[class^="popupHeaderText"], [class^="actionMessages"]').forEach(subEle => {
+                subEle.removeEventListener('click', handleServerSideVal);
+                subEle.addEventListener('click', handleServerSideVal);
+            });
+
+            // hover event -> only for TOC menu options -> target on li tags with id starts with menu
+            doc.querySelectorAll('li[id^="menu"]').forEach(menuOpt => {
+                var elmtType = getElementType(menuOpt);
+                // when user hovers over an element beyond 5 Seconds then hower event should get triggered 
+                menuOpt.addEventListener("mouseenter", function () {
+                    // Start a timer when the mouse enters the element
+                    hoverTimer = setTimeout(function () {
+                        logInteractionEvent(elmtType, 'hover', 'hover', menuOpt);
+                    }, 5000); // 1000 milliseconds = 1 seconds
+                });
+                menuOpt.addEventListener("mouseleave", function () {
+                    clearTimeout(hoverTimer);
+                });
+            });
+
 
             doc.querySelectorAll('textarea, select, a, img').forEach(subEle => { // Array of specified elements inside Documents
                 inputs.push(subEle);
@@ -581,16 +618,16 @@
                     logInteractionEvent(elmtType, 'dblclick', 'doubleclick', input);
                 });
                 
-                // when user hovers over an element beyond 5 Seconds then hower event should get triggered 
-                input.addEventListener("mouseenter", function () {
-                    // Start a timer when the mouse enters the element
-                    hoverTimer = setTimeout(function () {
-                        logInteractionEvent(elmtType, 'hover', 'hover', input);
-                    }, 10000); // 1000 milliseconds = 1 seconds
-                });
-                input.addEventListener("mouseleave", function () {
-                    clearTimeout(hoverTimer);
-                });
+                // // when user hovers over an element beyond 5 Seconds then hower event should get triggered 
+                // input.addEventListener("mouseenter", function () {
+                //     // Start a timer when the mouse enters the element
+                //     hoverTimer = setTimeout(function () {
+                //         logInteractionEvent(elmtType, 'hover', 'hover', input);
+                //     }, 10000); // 1000 milliseconds = 1 seconds
+                // });
+                // input.addEventListener("mouseleave", function () {
+                //     clearTimeout(hoverTimer);
+                // });
             });
  
             // for iframes inside 2nd level and later documents  
@@ -615,29 +652,37 @@
         logInteractionEvent(elmtType, 'click', 'CLICK', event.target);
     }
 
+    // whenever user clicks on target elements then add click entry then if QA presses short cut key then corresponding user action will get fire
+    // same applicable to fetch the title of the gensearch
+    function handleServerSideVal(event) 
+    {
+        var elmtType = getElementType(event.target);
+        logInteractionEvent(elmtType, 'click', 'capSerVal', event.target); // to capture server side validations
+    }
+
     // When screen refreshes the logInteractions variable gets empty.
     // to get data of user activities before screen refresh... this method is written,
     // fetch old Records array and then assingn old values to logInteractions var.
-    function addOldRecs()
-    {
-        chrome.storage.local.get(['userActivities'], (result) => {
-            if(result.userActivities.length > 0 )
-            {
-                logInteractions = result.userActivities;
-                console.log('content.js -> addOldRecs() -> Old interactions added ->', logInteractions);
-            }
-            else{
-                console.log('content.js -> addOldRecs() -> No old interactions present.');
-            }
+    // function addOldRecs()
+    // {
+    //     chrome.storage.sync.get(['userActivities'], (result) => {
+    //         if(result.userActivities.length > 0 )
+    //         {
+    //             logInteractions = result.userActivities;
+    //             console.log('content.js -> addOldRecs() -> Old interactions added ->', logInteractions);
+    //         }
+    //         else{
+    //             console.log('content.js -> addOldRecs() -> No old interactions present.');
+    //         }
             
-            // even if this method invoked at top, as it is a aysnchronous method it gets executed at the end.
-            // so to avoid errors attach useractions, are stored in interactionsToBeAdded[].
-            for (let i = 0; i < interactionsToBeAdded.length; i++) 
-            {
-                logInteractions.push(interactionsToBeAdded[i]);
-            }
-        });
-    }
+    //         // even if this method invoked at top, as it is a aysnchronous method it gets executed at the end.
+    //         // so to avoid errors attach useractions, are stored in interactionsToBeAdded[].
+    //         for (let i = 0; i < interactionsToBeAdded.length; i++) 
+    //         {
+    //             logInteractions.push(interactionsToBeAdded[i]);
+    //         }
+    //     });
+    // }
 
     // To handle the shortCut Keys
     function handleKeyEvents(event) 
@@ -653,6 +698,10 @@
             logInteractionEvent('', 'maximize', 'maximize', null);
             return;
         }
+
+        // get all user-actions from localStorage
+        var genSeaUserAct   = localStorage.getItem('UserActions');
+        logInteractions     = JSON.parse(genSeaUserAct); // convert string into object
         
         if(logInteractions) // check if logInteractions defined or not
         {
@@ -660,27 +709,36 @@
             if (event.ctrlKey && event.key === '/') 
             {
                 console.log('Screenshots user action');
+                // logInteractions[logInteractions.length - 1 ].Screenshots = 'Y';
+                // chrome.storage.sync.set({userActivities: logInteractions});
                 logInteractions[logInteractions.length - 1 ].Screenshots = 'Y';
-                chrome.storage.local.set({userActivities: logInteractions});
+                localStorage.setItem('UserActions', JSON.stringify(logInteractions)); // convert object into String
                 return;
             }
             // when user clicks on ctrl+. -> then get last Log entry and set it's User Action attribute's data to 'verify'
             else if (event.ctrlKey && event.key === '.') 
             {
                 console.log('verify user action');
+                // logInteractions[logInteractions.length - 1 ].User_Action = 'verify';
+                // chrome.storage.sync.set({userActivities: logInteractions});
                 logInteractions[logInteractions.length - 1 ].User_Action = 'verify';
-                chrome.storage.local.set({userActivities: logInteractions});
+                localStorage.setItem('UserActions', JSON.stringify(logInteractions));
                 return;
             }
             else if(event.altKey && event.key === 'a') // alertcontains user-action alt+a
             {
                 // this user-action will only get executed if there id previousentry of alerttext user action
+                // if(logInteractions[logInteractions.length - 2 ].User_Action === 'alerttext')
+                // {
+                console.log('alertcontains user action');
+                    // logInteractions[logInteractions.length - 2 ].User_Action = 'alertcontains';
+                    // chrome.storage.sync.set({userActivities: logInteractions});
                 if(logInteractions[logInteractions.length - 2 ].User_Action === 'alerttext')
                 {
-                    console.log('alerttext user action');
                     logInteractions[logInteractions.length - 2 ].User_Action = 'alertcontains';
-                    chrome.storage.local.set({userActivities: logInteractions});
+                    localStorage.setItem('UserActions', JSON.stringify(logInteractions));
                 }
+                // }
                 return;
             }
         }
@@ -688,14 +746,14 @@
         var lhEle = {};
 
         // the array must be defined or initialized to perform this action
-        // assuming dynamicset user actions performed on Text fields only
+        // assuming below user actions performed on Text fields only
         if(lastAccessedEle) 
             lhEle = lastAccessedEle[0];
         else
             return;
         
         // user needs to click on the element and then press shortCut
-        if(event.ctrlKey && event.key === 'b') // isblank event - 'ctrl + b'
+        if(event.altKey && event.key === 'b') // isblank event - 'alt + b'
             logInteractionEvent(getElementType(lhEle), 'isblank', 'isblank', lhEle);
         else if(event.ctrlKey && event.key === 'k')// isenable event - 'ctrl + k'
             logInteractionEvent(getElementType(lhEle), 'isenable', 'isenable', lhEle);
@@ -713,8 +771,10 @@
             logInteractionEvent(getElementType(lhEle), 'clear', 'clear', lhEle);
         else if(event.altKey && event.key === '/') // highlight user action alt+/
             logInteractionEvent(getElementType(lhEle), 'highlight', 'highlight', lhEle);
-        else if(event.altKey && event.key === '.')// objectexists useraction alt+.
-            logInteractionEvent(getElementType(lhEle), 'objectexists', 'objectexists', lhEle);
+        else if(event.altKey && event.key === '.')// objectexist useraction alt+.
+            logInteractionEvent(getElementType(lhEle), 'objectexist', 'objectexist', lhEle);
+        else if(event.altKey && event.key === 'c') // alt+c   ---to change focus QA needs to click somewhere else so this shortcut added
+            logInteractionEvent(getElementType(lhEle), 'custom_click', 'custom_click', lhEle);
       
        console.log('content.js -> handleKeyEvents() -> End');
     }
@@ -724,13 +784,20 @@
     {
         // to avoid duplicate entries
         // check the idenfier and useraction of last logged interaction with current interaction
-        let interactionLast = logInteractions[logInteractions.length - 1];
-        if( areObjectsEqual(interaction, interactionLast) === false)
+        var userAct = localStorage.getItem('UserActions');
+
+        if(userAct !== 'null' && userAct)
         {
-            console.log(interaction);
-            logInteractions.push(interaction);
-            chrome.storage.local.set({userActivities: logInteractions});
-        }  
+            logInteractions     = JSON.parse(userAct); 
+            let interactionLast = logInteractions[logInteractions.length - 1];
+            if( areObjectsEqual(interaction, interactionLast) === false)
+            {
+                console.log(interaction);
+                logInteractions.push(interaction);
+                // chrome.storage.sync.set({userActivities: logInteractions});
+                localStorage.setItem('UserActions', JSON.stringify(logInteractions));
+            }  
+        } 
     }
 
     // to prevent duplicate entries.
@@ -749,7 +816,6 @@
                 return false;
             }
         }
-    
         return true;
     }
 
@@ -826,3 +892,19 @@
     }
 })
 ();
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'stopTracking') 
+    {
+        console.log('Message received in content script from popup.js:', message.data);
+
+        // get user-actions stored in localStorage
+        var userAct = localStorage.getItem('UserActions');
+        if(userAct !== 'null' && userAct)
+        {
+            logInteractions = JSON.parse(userAct);
+            localStorage.setItem('UserActions', null);
+        }
+        sendResponse({ status: 'success', data:  logInteractions});
+    }
+});

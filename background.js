@@ -1,5 +1,5 @@
 
-var trackedTabDomain = null; // used to keep the Plug-In Pop-Up visible during tracking
+// var trackedTabDomain = null; // used to keep the Plug-In Pop-Up visible during tracking
 // var gsLogStatus = 'OFF';
 
 // function overrideAlert() {
@@ -18,7 +18,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 {
                     console.log("background.js -> chrome.runtime.onMessage.addListener -> Started tracking - URL : " + tabs[0].url);
                     const url = new URL(tabs[0].url);
-                    trackedTabDomain = url.hostname;
+                    // trackedTabDomain = url.hostname;
+                    chrome.storage.local.set({trackedTabDomain: url.hostname});
 
                     chrome.scripting.executeScript({
                         target: { tabId: tabs[0].id },
@@ -41,14 +42,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // User Clicked on Stop Button 
     else if (message.command === 'stopTracking') 
     {
-        trackedTabDomain = null;
-        chrome.storage.local.get(['userActivities'], (result) => {
-            sendResponse({ status: 'stopped', data: result.userActivities });
-        });
+        // trackedTabDomain = null;
+        chrome.storage.local.set({trackedTabDomain: null});
+        // chrome.storage.sync.get(['userActivities'], (result) => {
+        //     sendResponse({ status: 'stopped', data: result.userActivities });
+        // });
     }
     else if(message.command === 'cancelTracking')
     {
-        trackedTabDomain = null;
+        // trackedTabDomain = null;
+        chrome.storage.local.set({trackedTabDomain: null});
         sendResponse({ status: 'cancelled'});
     }
     return true; // true = asynchronous & false = synchronous
@@ -63,37 +66,39 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
         const url = new URL(tab.url);
         const domain = url.hostname;
 
-        if (logStatus === 'ON' && trackedTabDomain === domain)
-        {
-            //trackedTabId = tab.id;
-            console.log("background.js -> chrome.tabs.onUpdated.addListener -> execute content.js on - URL : " + tab.url);
+        chrome.storage.local.get(['trackedTabDomain'], (result) => {
+            if (logStatus === 'ON' && result.trackedTabDomain === domain)
+            {
+                //trackedTabId = tab.id;
+                console.log("background.js -> chrome.tabs.onUpdated.addListener -> execute content.js on - URL : " + tab.url);
 
-            setTimeout(function() {
-                chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['content.js']
-                }, () => {
-                    if (chrome.runtime.lastError) 
-                    {
-                        console.log("background.js -> chrome.tabs.onUpdated.addListener -> Error executing content.js:", chrome.runtime.lastError.message);
-                    } 
-                    else 
-                    {
-                        chrome.runtime.sendMessage({ status: 'Script Executed', message: "Content.js executed" }, (response) => {
-                            // if (chrome.runtime.lastError) {
-                            //     console.log("Error sending message after script execution:", chrome.runtime.lastError.message);
-                            // } else {
-                            //     console.log("Message sent successfully:", response);
-                            // }
-                        });
-                    }
-                });
-            }, 500);
-           
-        } else 
-        {
-            console.log('background.js -> chrome.tabs.onUpdated.addListener -> Script in content.js is not executed. LogStatus :' + logStatus); 
-        }
+                setTimeout(function() {
+                    chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        files: ['content.js']
+                    }, () => {
+                        if (chrome.runtime.lastError) 
+                        {
+                            console.log("background.js -> chrome.tabs.onUpdated.addListener -> Error executing content.js:", chrome.runtime.lastError.message);
+                        } 
+                        else 
+                        {
+                            chrome.runtime.sendMessage({ status: 'Script Executed', message: "Content.js executed" }, (response) => {
+                                // if (chrome.runtime.lastError) {
+                                //     console.log("Error sending message after script execution:", chrome.runtime.lastError.message);
+                                // } else {
+                                //     console.log("Message sent successfully:", response);
+                                // }
+                            });
+                        }
+                    });
+                }, 500);
+            
+            } else 
+            {
+                console.log('background.js -> chrome.tabs.onUpdated.addListener -> Script in content.js is not executed. LogStatus :' + logStatus); 
+            }
+        });
     }
     return true;
 });
@@ -114,16 +119,9 @@ function getLogStatus()
     });
 }
 
-// chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-//     if (request.action === "getTabId") {
-//         // The tab ID can be accessed from the `sender` object
-//         sendResponse({ tabId: sender.tab.id });
-//     }
-// });
-
-
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//     console.log("----------------------------------------------------------------Message received in background script:", message);
-//     sendResponse({ status: '---------------------------------------------------------received' });
-//     return true; 
-// });
+// user actions from gensearch or new window are not getting added to previous user actions
+// Listen for window closures
+chrome.windows.onRemoved.addListener(function(windowId) {
+    console.log('Window with ID ' + windowId + ' was closed.');
+    // Handle window closure
+});

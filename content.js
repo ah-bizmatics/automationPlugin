@@ -223,7 +223,7 @@
         }
         else if(eventType === 'wait')
         {                                                // wait    wait
-            const interaction = logInteraction('', '', userAction, eventType, 'Wait for 3 Seconds');
+            const interaction = logInteraction('', '', userAction, '', 'Wait for 3 Seconds');
             logAndSetUserActivity(interaction);
             return ;
         }
@@ -287,7 +287,7 @@
         if(eventType === 'isblank' || eventType === 'highlight' || eventType === 'isenable' || eventType === 'clear')
             dataColumn = '';
 
-        var interaction = logInteraction(identifier, identifierValue, userAction, dataColumn, description);
+        var interaction = logInteraction(identifier, identifierValue, userAction, '', description);
 
         // if (eventType === 'change' && element.type === 'radio') //commented by Amardeep to store Radio-Btn Click event Log
         if (eventType === 'click' && element.type === 'radio')
@@ -297,7 +297,7 @@
             {
                 lastInteraction[dataColumn] = identifierValue + '^' + actualValue;
                 dataColumn = ''; // for 'click' user action there should not be data inside data_column
-                interaction = logInteraction(identifier, identifierValue, userAction, dataColumn, description);
+                interaction = logInteraction(identifier, identifierValue, userAction, '', description);
                 logAndSetUserActivity(interaction);
             }
         } 
@@ -310,9 +310,21 @@
                 if(eventType === 'click') // for 'click' user action there should not be data inside data_column
                     dataColumn = '';
 
-                interaction = logInteraction(identifier, identifierValue, userAction, dataColumn, description);
+                interaction = logInteraction(identifier, identifierValue, userAction, '', description);
                 logAndSetUserActivity(interaction);
             }
+        }
+        else if (eventType === 'dblclick' && action === 'verify') // for labels - verify useraction
+        {
+            description = 'verify \'' + element.innerText + '\' label';
+            interaction = logInteraction(identifier, identifierValue, userAction, '', description);
+            logAndSetUserActivity(interaction);
+        }
+        else if (eventType === 'dblclick' && action === 'scrollto') // for labels - verify useraction
+        {
+            description = 'scroll \'' + element.innerText + '\'';
+            interaction = logInteraction(identifier, identifierValue, userAction, '', description);
+            logAndSetUserActivity(interaction);
         }
         else if (eventType === 'dblclick') // for Double Click user action
         {
@@ -328,13 +340,13 @@
         {
             if(eventType === 'click') // for 'click' user action there should not be data inside data_column
                 dataColumn = '';
-            interaction = logInteraction(identifier, identifierValue, userAction, dataColumn, description);
+            interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         }
         else if(eventType === 'scroll&click')
         {
             dataColumn = '';
-            interaction = logInteraction(identifier, identifierValue, 'scrollto', dataColumn, description);
+            interaction = logInteraction(identifier, identifierValue, 'scrollto', '', description);
             logAndSetUserActivity(interaction); 
         }
         else if(eventType === 'contains'        || eventType === 'gettrim'          || 
@@ -369,7 +381,7 @@
         else if(eventType === 'click' && action === 'capSerVal') // added to capture server side validations like 'Save Successful.'
         {
             dataColumn = '';
-            interaction = logInteraction(identifier, identifierValue, 'click', dataColumn, description);
+            interaction = logInteraction(identifier, identifierValue, 'click', '', description);
             logAndSetUserActivity(interaction);
         }
     }
@@ -512,6 +524,8 @@
             doc.addEventListener('DOMContentLoaded', addEvenListenersToDoc, false);
 
             doc.addEventListener('keydown', handleKeyEvents);
+
+            doc.addEventListener('dblclick', handleDblClik); // added to handle - scrollto and verify useraction
 
             // for scrollTo event 
             doc.querySelectorAll('div').forEach(divEle => { // Array of specified elements inside Documents
@@ -889,6 +903,18 @@
         }
         const relativePath = getPathFromAncestor(element, ancestor);
         return `//*[@id="${ancestor.id}"]${relativePath}`;
+    }
+
+    // to handle scrollto and verify useractions
+    function handleDblClik(event)
+    {
+        // press and hold ctrl key or altKey and then double click on lable or any element then these user actions will fire up
+        if (event.ctrlKey) {
+            logInteractionEvent(getElementType(event.target), 'dblclick', 'verify', event.target);
+        }
+        else if(event.altKey){
+            logInteractionEvent(getElementType(event.target), 'dblclick', 'scrollto', event.target);
+        }
     }
 })
 ();

@@ -53,17 +53,19 @@ document.getElementById('start-button').addEventListener('click', () => {
 // Execute this block whenever user clicks on Stop button 
 document.getElementById('stop-button').addEventListener('click', () => {
 
+    document.getElementById('start-button').style.display   = 'inline';
+    document.getElementById('stop-button').style.display    = 'none'; 
+    document.getElementById('cancel-button').style.display  = 'none';
     // get all active tabs and send message 
     // gets userActions from localStorage
     chrome.tabs.query({ active: true }, function(tabs) {
         tabs.forEach(function(tab) {
             chrome.tabs.sendMessage(tab.id, { action: 'stopTracking', data: 'getUSerActions' }, function(response) {
-                // if (chrome.runtime.lastError) {
-                //     console.error(`Could not send message to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-                // } else {
-                   
-                //     console.log('Response from content script:', response);
-                // }
+                if (chrome.runtime.lastError) {
+                    console.error(`Could not send message to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                } else {
+                    console.log('Response from content script:', response);
+                }
                 if(response && response.data)
                 {
                     generateExcel(response.data);
@@ -72,24 +74,24 @@ document.getElementById('stop-button').addEventListener('click', () => {
         });
     });
 
-    chrome.runtime.sendMessage({command: 'stopTracking'}, (response) => { // invoke background.js
-        setLogStatus('OFF');
+    // chrome.runtime.sendMessage({command: 'stopTracking'}, (response) => { // invoke background.js
+    //     setLogStatus('OFF');
 
-        if (response.status === 'stopped') 
-        {
-           // generateExcel(response.data);
-            document.getElementById('start-button').style.display   = 'inline';
-            document.getElementById('stop-button').style.display    = 'none'; 
-            document.getElementById('cancel-button').style.display  = 'none'; 
-        }
-        else if (response && response.status === 'error') 
-            alert('popup.js -> Error: ' + response.message);
-        else
-            alert("popup.js -> everything went wrong...Stop Btn " + response.message);
+    //     if (response.status === 'stopped') 
+    //     {
+    //        // generateExcel(response.data);
+    //         document.getElementById('start-button').style.display   = 'inline';
+    //         document.getElementById('stop-button').style.display    = 'none'; 
+    //         document.getElementById('cancel-button').style.display  = 'none'; 
+    //     }
+    //     else if (response && response.status === 'error') 
+    //         alert('popup.js -> Error: ' + response.message);
+    //     else
+    //         alert("popup.js -> everything went wrong...Stop Btn " + response.message);
 
-        // clear data in chrome.local.userActivities <- local storage for PlugIn
-        // resetUserActivities(); 
-    });
+    //     // clear data in chrome.local.userActivities <- local storage for PlugIn
+    //     // resetUserActivities(); 
+    // });
 });
 
 // Execute this block whenever user clicks on Cancel button 

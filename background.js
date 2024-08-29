@@ -40,14 +40,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });   
     }
     // User Clicked on Stop Button 
-    else if (message.command === 'stopTracking') 
-    {
-        // trackedTabDomain = null;
-        chrome.storage.local.set({trackedTabDomain: null});
-        // chrome.storage.sync.get(['userActivities'], (result) => {
-        //     sendResponse({ status: 'stopped', data: result.userActivities });
-        // });
-    }
+    // else if (message.command === 'stopTracking') 
+    // {
+    //     // trackedTabDomain = null;
+    //     chrome.storage.local.set({trackedTabDomain: null});
+    //     // chrome.storage.sync.get(['userActivities'], (result) => {
+    //     //     sendResponse({ status: 'stopped', data: result.userActivities });
+    //     // });
+    // }
     else if(message.command === 'cancelTracking')
     {
         // trackedTabDomain = null;

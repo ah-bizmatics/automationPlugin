@@ -56,6 +56,7 @@ document.getElementById('stop-button').addEventListener('click', () => {
     document.getElementById('start-button').style.display   = 'inline';
     document.getElementById('stop-button').style.display    = 'none'; 
     document.getElementById('cancel-button').style.display  = 'none';
+    setLogStatus('OFF');
     // get all active tabs and send message 
     // gets userActions from localStorage
     chrome.tabs.query({ active: true }, function(tabs) {

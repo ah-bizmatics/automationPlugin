@@ -1,4 +1,3 @@
-
 // on load -> check if Tracking is ON or OFF
 // if ON -> Show DownLoad & Cancel Buttons
 // if OFF -> Show start button
@@ -43,7 +42,6 @@ document.getElementById('start-button').addEventListener('click', () => {
         }
         else
         {
-            // resetUserActivities();
             setLogStatus('OFF');
             alert("popup.js -> everything went wrong...Start btn" + response.message);
         }
@@ -63,7 +61,7 @@ document.getElementById('stop-button').addEventListener('click', () => {
         tabs.forEach(function(tab) {
             chrome.tabs.sendMessage(tab.id, { action: 'stopTracking', data: 'getUSerActions' }, function(response) {
                 if (chrome.runtime.lastError) {
-                    console.error(`Could not send message to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                    console.log(`Could not send message to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
                 } else {
                     console.log('Response from content script:', response);
                 }
@@ -74,31 +72,11 @@ document.getElementById('stop-button').addEventListener('click', () => {
             });
         });
     });
-
-    // chrome.runtime.sendMessage({command: 'stopTracking'}, (response) => { // invoke background.js
-    //     setLogStatus('OFF');
-
-    //     if (response.status === 'stopped') 
-    //     {
-    //        // generateExcel(response.data);
-    //         document.getElementById('start-button').style.display   = 'inline';
-    //         document.getElementById('stop-button').style.display    = 'none'; 
-    //         document.getElementById('cancel-button').style.display  = 'none'; 
-    //     }
-    //     else if (response && response.status === 'error') 
-    //         alert('popup.js -> Error: ' + response.message);
-    //     else
-    //         alert("popup.js -> everything went wrong...Stop Btn " + response.message);
-
-    //     // clear data in chrome.local.userActivities <- local storage for PlugIn
-    //     // resetUserActivities(); 
-    // });
 });
 
 // Execute this block whenever user clicks on Cancel button 
 document.getElementById('cancel-button').addEventListener('click', () => {
     setLogStatus('OFF');
-    // resetUserActivities(); 
     document.getElementById('start-button').style.display = 'inline';
     document.getElementById('stop-button').style.display = 'none'; 
     document.getElementById('cancel-button').style.display = 'none';
@@ -221,16 +199,5 @@ function setLogStatus(logStatus)
     return reorderedObj;
 }
 
-// set user activities to empty array afterdownload or cancel button clicked
-// function resetUserActivities()
-// {
-//     chrome.storage.sync.set({ userActivities: [] }, function() {
-//         if (chrome.runtime.lastError) {
-//             console.error('popup.js -> resetUserActivities() -> Error setting userActivities:', chrome.runtime.lastError);
-//         } else {
-//             console.log('popup.js -> resetUserActivities() -> userActivities is set to null');
-//         }
-//     });
-// }
 
 

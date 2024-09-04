@@ -1,13 +1,3 @@
-
-// var trackedTabDomain = null; // used to keep the Plug-In Pop-Up visible during tracking
-// var gsLogStatus = 'OFF';
-
-// function overrideAlert() {
-//     window.alert = function(message) {
-//         console.log("Custom alert from extension: " + message);
-//     };
-// }
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // User clicked on Start Button
     if (message.command === 'startTracking')     
@@ -39,15 +29,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
         });   
     }
-    // User Clicked on Stop Button 
-    // else if (message.command === 'stopTracking') 
-    // {
-    //     // trackedTabDomain = null;
-    //     chrome.storage.local.set({trackedTabDomain: null});
-    //     // chrome.storage.sync.get(['userActivities'], (result) => {
-    //     //     sendResponse({ status: 'stopped', data: result.userActivities });
-    //     // });
-    // }
     else if(message.command === 'cancelTracking')
     {
         // trackedTabDomain = null;
@@ -118,10 +99,3 @@ function getLogStatus()
         });
     });
 }
-
-// user actions from gensearch or new window are not getting added to previous user actions
-// Listen for window closures
-chrome.windows.onRemoved.addListener(function(windowId) {
-    console.log('Window with ID ' + windowId + ' was closed.');
-    // Handle window closure
-});

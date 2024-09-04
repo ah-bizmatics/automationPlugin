@@ -2,12 +2,10 @@
     var logInteractions   = [];
     const lastInteraction = {};
     const lastAccessedEle = [];
-    // const interactionsToBeAdded = []; // used fort 'attach' useractions
 
     document.body.style.border = "5px solid black";
 
     console.log('content.js -> Started');
-    // addOldRecs();
     attachEventListeners1();
    
     document.addEventListener('DOMContentLoaded', attachEventListeners1, false);
@@ -79,39 +77,26 @@
         else
             desc = `Attach to ${document.title}  window.`;
 
-        const interaction = logInteraction( '', document.title, 'attach', '', desc);
-        console.log(interaction);
-        // interactionsToBeAdded.push(interaction);
-        logInteractions.push(interaction);
-        localStorage.setItem('UserActions', JSON.stringify(logInteractions));   
+        // if there is setframe user action before attach then do not insert attach useraction
+        if((logInteractions.length > 1 && logInteractions[logInteractions.length - 1].User_Action === 'setframe') === false)
+        {
+            const interaction = logInteraction( '', document.title, 'attach', '', desc);
+            console.log(interaction);
+            logInteractions.push(interaction);
+            localStorage.setItem('UserActions', JSON.stringify(logInteractions)); 
+        }
+        else
+        {
+            const setFrameRec = logInteractions.pop();
+            const interaction = logInteraction( '', document.title, 'attach', '', desc);
+            console.log(interaction);
+            logInteractions.push(interaction);
+            logInteractions.push(setFrameRec);
 
+            localStorage.setItem('UserActions', JSON.stringify(logInteractions));
+        }
+          
         addEvenListenersToDoc(document);
-
-        // Event Listener for iframes - whenever they get changed this block should get execute.
-        // Not working as expected - Problem ->  At the very first time when a popup is created inside Module windows - content.js is not getting executed.
-        document.querySelectorAll('body div[id^="modal"] iframe').forEach(element => {
-            
-            element.contentDocument.body.style.border = "5px solid green";
-            element.contentDocument.addEventListener('DOMContentLoaded', addEvenListenersToDoc(element.contentDocument), false);
-
-            const callbackIFrameMutation = function(mutationsList, observer) {
-                for (const mutation of mutationsList) 
-                {
-                    if (mutation.type === 'attributes') // when children elements are modified
-                    {
-                        console.log(`popup.js -> callbackIFrameMutation -> iframe src changed from: ${mutation.oldValue} to: ${mutation.target.src}`);
-                        // setFrame user Action call here 
-                        // control is not comming here
-                    }
-                }
-            };
-
-            const configIFrame = {attributes: true, attributeOldValue: true, attributeFilter: ['src']};
-            const observerIFrame = new MutationObserver(callbackIFrameMutation);
-            if(element.nodeType === 1)
-                observerIFrame.observe(element, configIFrame);
-        });
-
         
         // Home screen has horizontal menuBar -> Appointments, Patients...
         // When user hovers  on these elements, subMenus div(comes from js) is shown 
@@ -207,13 +192,6 @@
             }
             return ;
         }
-        // add code for menu hyperlink ex. Appoinment, Patient, CPOE... 
-        else if(type === 'a' && eventType === 'click')
-        {
-            const interaction = logInteraction('linktext', element.textContent, userAction, '', `Click on ${element.textContent} menu option`);
-            logAndSetUserActivity(interaction);
-            return ; 
-        }
         else if(eventType === 'attach')
         {
             // only in 'attach' user action case... type = Title of the screen
@@ -227,7 +205,7 @@
             logAndSetUserActivity(interaction);
             return ;
         }
-        else if(eventType === 'maximize') 
+        else if(eventType === 'maximize') // alt+4
         {
             const interaction = logInteraction('', '', userAction, '', '');
             logAndSetUserActivity(interaction);
@@ -301,6 +279,18 @@
                 logAndSetUserActivity(interaction);
             }
         } 
+        // add code for menu hyperlink ex. Appoinment, Patient, CPOE... 
+        else if(type === 'a' && eventType === 'click')
+        {
+            var interaction = '';
+            if(element.className.includes('boxclose')) // the cross inside circle at TopRight corner of popup
+                interaction = logInteraction(identifier, identifierValue, userAction, '', `Click on Close Symbol (Top right corner)`);
+            else
+                interaction = logInteraction('linktext', element.textContent, userAction, '', `Click on ${element.textContent} menu option`);
+
+            logAndSetUserActivity(interaction);
+            return ; 
+        }
         else if (eventType === 'change' || (eventType === 'click' && element.type === 'checkbox')) 
         {
             // For other inputs, log when the value changes or checkbox is clicked
@@ -343,25 +333,22 @@
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         }
-        else if(eventType === 'scroll&click')
-        {
-            dataColumn = '';
-            interaction = logInteraction(identifier, identifierValue, 'scrollto', '', description);
-            logAndSetUserActivity(interaction); 
-        }
         else if(eventType === 'contains'        || eventType === 'gettrim'          || 
                 eventType === 'dynamicverify'   || eventType === 'dynamiccontains'  || 
                 eventType === 'dynamicset'      || eventType === 'isblank'          || 
                 eventType === 'isenable'        || eventType === 'clear'            ||
                 eventType === 'highlight'       || eventType === 'objectexist'     )
         {
-            // contains user action 'ctrl+i'
-            // gettrim user action 'ctrl+]'
-            // dynamicverify user action 'ctrl+['
-            // dynamiccontains user action 'ctrl+,'
-            // dynamicset user action 'ctrl+m'
-            // isblank user action ctrl+b
-            // isenable user action - ctrl+k
+            // contains user action 'ctrl+2'
+            // gettrim user action 'ctrl+4'
+            // dynamicverify user action 'ctrl+5'
+            // dynamiccontains user action 'ctrl+6'
+            // dynamicset user action 'ctrl+7'
+            // objectexists user action 'ctrl+8' 
+            // isblank user action shift+1
+            // isenable user action - ctrl+9
+            // clear user action shift+2
+            // highlight user action 'shift + 3'
             console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
 
             if(eventType === 'custom_click')
@@ -379,6 +366,24 @@
             logAndSetUserActivity(interaction);
         }
         else if(eventType === 'click' && action === 'capSerVal') // added to capture server side validations like 'Save Successful.'
+        {
+            dataColumn = '';
+            interaction = logInteraction(identifier, identifierValue, 'click', '', description);
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'click' && action === 'verify') // added to capture server side validations like 'Save Successful.'
+        {
+            dataColumn = '';
+            interaction = logInteraction(identifier, identifierValue, 'verify', '', description);
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'dblclick' && action === 'click') // added to capture server side validations like 'Save Successful.'
+        {
+            dataColumn = '';
+            interaction = logInteraction(identifier, identifierValue, 'click', '', description);
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'click' && action === 'clickOnRow') // added to record click user action on tr/td/span... tags
         {
             dataColumn = '';
             interaction = logInteraction(identifier, identifierValue, 'click', '', description);
@@ -486,7 +491,15 @@
                     </tr>
                 </table>
             */
-            let desc = element.parentElement.previousElementSibling.textContent.trim();
+            let desc = '';
+            try{
+                desc = element.parentElement.previousElementSibling.textContent.trim();
+            }
+            catch(error)
+            {
+                desc = element.placeholder || element.title || '';;
+            }
+            
             if(desc === '')
                 desc = element.id || element.title || element.placeholder;
             description = eventType + 'ed value in \'' + desc + '\' Field.';
@@ -526,15 +539,7 @@
             doc.addEventListener('keydown', handleKeyEvents);
 
             doc.addEventListener('dblclick', handleDblClik); // added to handle - scrollto and verify useraction
-
-            // for scrollTo event 
-            doc.querySelectorAll('div').forEach(divEle => { // Array of specified elements inside Documents
-                if(isElementScrollable(divEle))
-                {
-                    divEle.removeEventListener('scroll', handleDivScroll);
-                    divEle.addEventListener('scroll', handleDivScroll);
-                }
-            });
+            doc.addEventListener('click', handleClickOnRows) //  to click on rows we use this
 
             // actionMessages --> to fetch server side validation like -> Save Successful.
             // popupHeaderText --> to fetch the title of the gensearch
@@ -631,17 +636,6 @@
                 input.addEventListener('dblclick', function(event) {
                     logInteractionEvent(elmtType, 'dblclick', 'doubleclick', input);
                 });
-                
-                // // when user hovers over an element beyond 5 Seconds then hower event should get triggered 
-                // input.addEventListener("mouseenter", function () {
-                //     // Start a timer when the mouse enters the element
-                //     hoverTimer = setTimeout(function () {
-                //         logInteractionEvent(elmtType, 'hover', 'hover', input);
-                //     }, 10000); // 1000 milliseconds = 1 seconds
-                // });
-                // input.addEventListener("mouseleave", function () {
-                //     clearTimeout(hoverTimer);
-                // });
             });
  
             // for iframes inside 2nd level and later documents  
@@ -674,40 +668,15 @@
         logInteractionEvent(elmtType, 'click', 'capSerVal', event.target); // to capture server side validations
     }
 
-    // When screen refreshes the logInteractions variable gets empty.
-    // to get data of user activities before screen refresh... this method is written,
-    // fetch old Records array and then assingn old values to logInteractions var.
-    // function addOldRecs()
-    // {
-    //     chrome.storage.sync.get(['userActivities'], (result) => {
-    //         if(result.userActivities.length > 0 )
-    //         {
-    //             logInteractions = result.userActivities;
-    //             console.log('content.js -> addOldRecs() -> Old interactions added ->', logInteractions);
-    //         }
-    //         else{
-    //             console.log('content.js -> addOldRecs() -> No old interactions present.');
-    //         }
-            
-    //         // even if this method invoked at top, as it is a aysnchronous method it gets executed at the end.
-    //         // so to avoid errors attach useractions, are stored in interactionsToBeAdded[].
-    //         for (let i = 0; i < interactionsToBeAdded.length; i++) 
-    //         {
-    //             logInteractions.push(interactionsToBeAdded[i]);
-    //         }
-    //     });
-    // }
-
     // To handle the shortCut Keys
     function handleKeyEvents(event) 
     {
-        // when user clicks on ctrl+; -> then get last element clicked (or accessed) and add new User-log entry then set it's User Action attribute's data to 'contains'
-        if (event.ctrlKey && event.key === ";") 
+        if (event.ctrlKey && event.key === "3") 
         {
             logInteractionEvent('', 'wait', 'wait', null);
             return;
         }
-        else if(event.altKey && event.key === "m")
+        else if(event.altKey && event.key === '4') // alt+4
         {
             logInteractionEvent('', 'maximize', 'maximize', null);
             return;
@@ -723,30 +692,14 @@
             if (event.ctrlKey && event.key === '/') 
             {
                 console.log('Screenshots user action');
-                // logInteractions[logInteractions.length - 1 ].Screenshots = 'Y';
-                // chrome.storage.sync.set({userActivities: logInteractions});
                 logInteractions[logInteractions.length - 1 ].Screenshots = 'Y';
                 localStorage.setItem('UserActions', JSON.stringify(logInteractions)); // convert object into String
                 return;
             }
-            // when user clicks on ctrl+. -> then get last Log entry and set it's User Action attribute's data to 'verify'
-            else if (event.ctrlKey && event.key === '.') 
-            {
-                console.log('verify user action');
-                // logInteractions[logInteractions.length - 1 ].User_Action = 'verify';
-                // chrome.storage.sync.set({userActivities: logInteractions});
-                logInteractions[logInteractions.length - 1 ].User_Action = 'verify';
-                localStorage.setItem('UserActions', JSON.stringify(logInteractions));
-                return;
-            }
-            else if(event.altKey && event.key === 'a') // alertcontains user-action alt+a
+            else if(event.altKey && event.key === '5') // alertcontains user-action alt+5
             {
                 // this user-action will only get executed if there id previousentry of alerttext user action
-                // if(logInteractions[logInteractions.length - 2 ].User_Action === 'alerttext')
-                // {
                 console.log('alertcontains user action');
-                    // logInteractions[logInteractions.length - 2 ].User_Action = 'alertcontains';
-                    // chrome.storage.sync.set({userActivities: logInteractions});
                 if(logInteractions[logInteractions.length - 2 ].User_Action === 'alerttext')
                 {
                     logInteractions[logInteractions.length - 2 ].User_Action = 'alertcontains';
@@ -767,29 +720,31 @@
             return;
         
         // user needs to click on the element and then press shortCut
-        if(event.altKey && event.key === 'b') // isblank event - 'alt + b'
+        if(event.altKey && event.key === '1') // isblank event - 'alt + 1'
             logInteractionEvent(getElementType(lhEle), 'isblank', 'isblank', lhEle);
-        else if(event.ctrlKey && event.key === 'k')// isenable event - 'ctrl + k'
+        else if(event.ctrlKey && event.key === '9')// isenable event - 'ctrl + 9'
             logInteractionEvent(getElementType(lhEle), 'isenable', 'isenable', lhEle);
-        else if(event.ctrlKey && event.key === 'm')// dynamicset event - 'ctrl + m'
+        else if(event.ctrlKey && event.key === '7')// dynamicset event - 'ctrl + 7'
             logInteractionEvent(getElementType(lhEle), 'dynamicset', 'dynamicset', lhEle);
-        else if(event.ctrlKey && event.key === ',')// dynamiccontains event 'ctrl + ,'
+        else if(event.ctrlKey && event.key === '6')// dynamiccontains event 'ctrl + 6'
             logInteractionEvent(getElementType(lhEle), 'dynamiccontains', 'dynamiccontains', lhEle);
-        else if(event.ctrlKey && event.key === '[') // dynamicverify event - 'ctrl + ['
+        else if(event.ctrlKey && event.key === '5') // dynamicverify event - 'ctrl + 5'
             logInteractionEvent(getElementType(lhEle), 'dynamicverify', 'dynamicverify', lhEle);
-        else if(event.ctrlKey && event.key === ']') // gettrim event 'ctrl + ]'
+        else if(event.ctrlKey && event.key === '4') // gettrim event 'ctrl + 4'
             logInteractionEvent(getElementType(lhEle), 'gettrim', 'gettrim', lhEle);
-        else if (event.ctrlKey && event.key === 'i') // when user clicks on ctrl+i -> then get last element clicked (or accessed) and add new User-log entry then set it's User Action attribute's data to 'contains'
+        else if (event.ctrlKey && event.key === '2') // when user clicks on ctrl+2 -> then get last element clicked (or accessed) and add new User-log entry then set it's User Action attribute's data to 'contains'
             logInteractionEvent(getElementType(lhEle), 'contains', 'contains', lhEle);
-        else if (event.ctrlKey && event.key === 'q') /// clear user action ctrl+q
+        else if (event.altKey && event.key === '2') /// clear user action alt+2
             logInteractionEvent(getElementType(lhEle), 'clear', 'clear', lhEle);
-        else if(event.altKey && event.key === '/') // highlight user action alt+/
+        else if(event.altKey && event.key === '3') // highlight user action alt+3
             logInteractionEvent(getElementType(lhEle), 'highlight', 'highlight', lhEle);
-        else if(event.altKey && event.key === '.')// objectexist useraction alt+.
+        else if(event.ctrlKey && event.key === '8')// objectexist useraction ctrl+8
             logInteractionEvent(getElementType(lhEle), 'objectexist', 'objectexist', lhEle);
         else if(event.altKey && event.key === 'c') // alt+c   ---to change focus QA needs to click somewhere else so this shortcut added
             logInteractionEvent(getElementType(lhEle), 'custom_click', 'custom_click', lhEle);
-      
+        else if (event.ctrlKey && event.key === '1') // ctrl+1 
+            logInteractionEvent(getElementType(lhEle), 'click', 'verify', lhEle);
+
        console.log('content.js -> handleKeyEvents() -> End');
     }
 
@@ -808,7 +763,6 @@
             {
                 console.log(interaction);
                 logInteractions.push(interaction);
-                // chrome.storage.sync.set({userActivities: logInteractions});
                 localStorage.setItem('UserActions', JSON.stringify(logInteractions));
             }  
         } 
@@ -846,19 +800,6 @@
         const hasOverflowX = window.getComputedStyle(element).overflowX !== 'visible' && element.scrollWidth > element.clientWidth;
     
         return hasOverflowY || hasOverflowX;
-    }
-
-    // when user scrolls any scrollable div ->  then add click event listener on that Div
-    function handleDivScroll(event)
-    {
-        event.currentTarget.removeEventListener('click', handleDivClicked); /// remove old eventListener
-        event.currentTarget.addEventListener('click', handleDivClicked);
-    }
-
-    // to perform scrollto useraction
-    function handleDivClicked(event)
-    {
-        logInteractionEvent(getElementType(event.target), 'scroll&click', 'scrollto', event.target);
     }
 
     function getRelativeXPath(element) 
@@ -914,6 +855,14 @@
         }
         else if(event.altKey){
             logInteractionEvent(getElementType(event.target), 'dblclick', 'scrollto', event.target);
+        }
+    }
+
+    // mostly used on Doclist or gensearch
+    function handleClickOnRows(event)
+    {
+        if(event.shiftKey){ // for click event on tr/td/span etc tags
+            logInteractionEvent(getElementType(event.target), 'click', 'clickOnRow', event.target);
         }
     }
 })

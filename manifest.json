@@ -3,7 +3,7 @@
     "name": "User Activity Tracker",
     "version":"1.0", 
 
-    "permissions":["activeTab","scripting","storage","tabs", "windows"],
+    "permissions":["activeTab","scripting","storage","tabs", "windows","downloads"],
     "host_permissions": ["<all_urls>"],
 
     

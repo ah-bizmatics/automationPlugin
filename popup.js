@@ -199,5 +199,14 @@ function setLogStatus(logStatus)
     return reorderedObj;
 }
 
+document.getElementById('downloadButton').addEventListener('click', function() {
+    // Create a temporary link to trigger the download
+    const link = document.createElement('a');
+    link.href = 'AutomationPluginUserGuide.jpg';  // Replace with the actual file URL
+    link.download = 'AutomationPluginUserGuide.jpg';  // Set the desired file name
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
 
 

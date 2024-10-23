@@ -229,7 +229,7 @@
 
         let actualValue = '';
         if (element.type === 'checkbox') {
-            actualValue = element.checked ? element.value : '';
+            actualValue = element.checked ? 'true' : 'false';
         } else if (element.type === 'radio' && element.checked) {
             actualValue = element.value;
         } else {
@@ -267,8 +267,8 @@
 
         var interaction = logInteraction(identifier, identifierValue, userAction, '', description);
 
-        // if (eventType === 'change' && element.type === 'radio') //commented by Amardeep to store Radio-Btn Click event Log
-        if (eventType === 'click' && element.type === 'radio')
+        if (eventType === 'change' && element.type === 'radio') 
+        // if (eventType === 'click' && element.type === 'radio') // no need to record click action for radiio button
         {
             // For radio buttons, only log when it is selected
             if (element.checked && (identifierValue !== lastIdfrVal || actualValue !== lastValue)) 
@@ -316,8 +316,22 @@
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         }
-        else if (eventType === 'dblclick') // for Double Click user action
+        else if (eventType === 'dblclick' && action === 'dblclick') // for Double Click user action
         {
+            // delete last added 'click' event's entry
+            // Usually problem occurred at schedule appointment screen - when user uses shift+dblClick, an extra 'click' user action's entry is added , which needs to be deleted
+            var userAct = localStorage.getItem('UserActions');
+
+            if(userAct !== 'null' && userAct)
+            {
+                logInteractions     = JSON.parse(userAct); 
+                let interactionLast = logInteractions[logInteractions.length - 1];
+
+                if(interactionLast.Identifier_Value == identifierValue  && interactionLast.User_Action == 'click')
+                    logInteractions.pop();
+
+                localStorage.setItem('UserActions', JSON.stringify(logInteractions));
+            } 
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         }
@@ -407,7 +421,7 @@
     {
         // If not unique, try different combinations of attributes
         var xpath = '';
-        var attributes = ['id', 'name', 'class', 'type', 'value', 'onclick']; // Add more attributes as needed
+        var attributes = ['id', 'name', 'class', 'type', 'value', 'onclick', 'style']; // Add more attributes as needed
         for (var i = 0; i < attributes.length; i++) 
         {
             var attribute = attributes[i];
@@ -415,7 +429,7 @@
             if (value) 
             {
                 var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '"]';
-                if (isUniqueXPath(xpathWithAttr)) 
+                if (isUniqueXPath(xpathWithAttr) && xpathWithAttr) 
                 {
                     return xpathWithAttr;
                 }
@@ -431,7 +445,7 @@
                             if(valueToMatch)
                             {
                                 var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '" and @' + attrToMatch + '="' + valueToMatch + '"]';
-                                if (isUniqueXPath(xpathWithAttr)) 
+                                if (isUniqueXPath(xpathWithAttr)  && xpathWithAttr) 
                                 {
                                     return xpathWithAttr;
                                 }
@@ -519,7 +533,10 @@
             let desc = element.parentElement.textContent.trim();
             if(desc == '')
             {
-                desc = element.parentElement.previousElementSibling.textContent.trim();
+                if(element.parentElement.previousElementSibling) // in gensearch pop up there is no label for checkbox, so prevEleSib comes null
+                    desc = element.parentElement.previousElementSibling.textContent.trim();
+                else
+                    desc = '';
             }
             description = eventType + 'ed on checkBox of \'' + desc + '\' Field.';
         }
@@ -618,7 +635,7 @@
             });
 
             console.log('content.js -> addEvenListenersToDoc() ');
-            console.log(inputs);
+            //console.log(inputs);
 
             // Change and Click Event Listerners
             inputs.forEach(input => {
@@ -759,7 +776,8 @@
         {
             logInteractions     = JSON.parse(userAct); 
             let interactionLast = logInteractions[logInteractions.length - 1];
-            if( areObjectsEqual(interaction, interactionLast) === false)
+            
+            if(areObjectsEqual(interaction, interactionLast) === false)
             {
                 console.log(interaction);
                 logInteractions.push(interaction);
@@ -788,6 +806,7 @@
     }
 
     // create a  function which will detect if the given element is scrollable or not
+    // not in use currently
     function isElementScrollable(element) 
     {
         // Check if the element is visible and not set to display: none
@@ -855,6 +874,9 @@
         }
         else if(event.altKey){
             logInteractionEvent(getElementType(event.target), 'dblclick', 'scrollto', event.target);
+        }
+        else if(event.shiftKey){
+            logInteractionEvent(getElementType(event.target), 'dblclick', 'dblclick', event.target);
         }
     }
 

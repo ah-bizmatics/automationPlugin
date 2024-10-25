@@ -316,7 +316,7 @@
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         }
-        else if (eventType === 'dblclick' && action === 'dblclick') // for Double Click user action
+        else if (eventType === 'dblclick' && action === 'doubleclick') // for Double Click user action
         {
             // delete last added 'click' event's entry
             // Usually problem occurred at schedule appointment screen - when user uses shift+dblClick, an extra 'click' user action's entry is added , which needs to be deleted
@@ -401,6 +401,12 @@
         {
             dataColumn = '';
             interaction = logInteraction(identifier, identifierValue, 'click', '', description);
+            logAndSetUserActivity(interaction);
+        }
+        else if(eventType === 'click' && action === 'CLICK-SELECT2') // whenever user clicks on select2 enabled dropdown/select element
+        {
+            dataColumn = '';
+            interaction = logInteraction(identifier, identifierValue, eventType, '', description);
             logAndSetUserActivity(interaction);
         }
     }
@@ -585,6 +591,7 @@
                 inputs.push(subEle);
             });
 
+            // not in use
             // we were not able to access alert/prompt/confirm. So we have inserted js script inside PrognoCIS src code.
             // from there we will get info about above useraction through 'automationPluginAlertLog' input element 
             doc.querySelectorAll('input').forEach(subEle => { // Array of specified elements inside Documents
@@ -637,10 +644,11 @@
             console.log('content.js -> addEvenListenersToDoc() ');
             //console.log(inputs);
 
+            var elmtType = '';
             // Change and Click Event Listerners
             inputs.forEach(input => {
 
-                var elmtType = getElementType(input);
+                elmtType = getElementType(input);
 
                 input.addEventListener('change', function(event) {
                     logInteractionEvent(elmtType, 'change', 'SET', input);
@@ -653,6 +661,20 @@
                 input.addEventListener('dblclick', function(event) {
                     logInteractionEvent(elmtType, 'dblclick', 'doubleclick', input);
                 });
+
+                // for select 2 enabled drop downs 
+                if('select-one' == elmtType)
+                {
+                    if(input.className && input.className.includes('select2'))
+                    {
+                        let lsSpanTagEle = input.nextElementSibling; // adding listener to select element not working. so added event listener to span tag.
+                        if(lsSpanTagEle && lsSpanTagEle.tagName.toLowerCase() == 'span')
+                        {
+                            lsSpanTagEle.removeEventListener('click', select2Handler);
+                            lsSpanTagEle.addEventListener('click', select2Handler);
+                        }
+                    }
+                }
             });
  
             // for iframes inside 2nd level and later documents  
@@ -675,6 +697,26 @@
     {
         var elmtType = getElementType(event.target);
         logInteractionEvent(elmtType, 'click', 'CLICK', event.target);
+    }
+
+    // whenever user click on a dropdown with select2 decorator
+    // create 3 logs 
+    // 1. click on the select dropdown element
+    // 2. set the search field
+    // 3. Click on the first option
+    function select2Handler(event)
+    {
+        let lsIdSpanEle = event.target.id; // get id of rendering elemnt -> it will contain select element's id
+        let lsSelEleId  = lsIdSpanEle.split('-')[1];
+        let lsSelEle    = event.target.ownerDocument.getElementById(lsSelEleId); // get select element
+
+        var lsElmtType = getElementType(lsSelEle); // get Id
+        logInteractionEvent(lsElmtType, 'click', 'CLICK-SELECT2', lsSelEle);
+
+        let interaction = logInteraction('xpath',  "//input[@class='select2-search__field' and @type='search']", 'set', '', '');// set search field
+        logAndSetUserActivity(interaction);
+        let interaction2 = logInteraction('xpath',  "//ul[@class='select2-results__options']//li[1]", 'click', '', '');// click on option
+        logAndSetUserActivity(interaction2);
     }
 
     // whenever user clicks on target elements then add click entry then if QA presses short cut key then corresponding user action will get fire
@@ -876,7 +918,7 @@
             logInteractionEvent(getElementType(event.target), 'dblclick', 'scrollto', event.target);
         }
         else if(event.shiftKey){
-            logInteractionEvent(getElementType(event.target), 'dblclick', 'dblclick', event.target);
+            logInteractionEvent(getElementType(event.target), 'dblclick', 'doubleclick', event.target);
         }
     }
 

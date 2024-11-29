@@ -3,6 +3,29 @@
     const lastInteraction = {};
     const lastAccessedEle = [];
 
+    // Active shortcuts
+    const shortcutData = {
+        'ctrl+1': 'verify',
+        'ctrl+2': 'contains',
+        'ctrl+3': 'wait',
+        'ctrl+4': 'gettrim',
+        'ctrl+5': 'dynamicverify',
+        'ctrl+6': 'dynamiccontains',
+        'ctrl+7': 'dynamicset',
+        'ctrl+8': 'objectexists',
+        'ctrl+9': 'isenable',
+        'ctrl+/': 'Screenshot',
+        'ctrl+click': 'verify(labels)',
+        'alt+1': 'isblank',
+        'alt+2': 'clear',
+        'alt+3': 'highlight',
+        'alt+4': 'maximize',
+        'alt+DblClick': 'scrollto',
+        'alt+c': 'click(change Focus)',
+        'shift+click': 'clickjs',
+        'shift+Dblclick': 'doubleclick'
+    };
+
     document.body.style.border = "5px solid black";
 
     console.log('content.js -> Started');
@@ -26,6 +49,9 @@
 
     function getElementIdentifier(element)
     {
+        if(!element)
+            return ;
+        
         if (element.id)
         { 
             // this block will check if more than one Elements with same Id are present
@@ -161,7 +187,8 @@
     
     function getElementType(element) 
     {
-        return element.type || element.tagName.toLowerCase();
+        if(element)
+            return element.type || element.tagName.toLowerCase();
     }
 
     function logInteractionEvent(type, eventType, action, element)
@@ -304,7 +331,7 @@
                 logAndSetUserActivity(interaction);
             }
         }
-        else if (eventType === 'dblclick' && action === 'verify') // for labels - verify useraction
+        else if (eventType === 'ctrl+click' && action === 'verify') // for labels - verify useraction
         {
             description = 'verify \'' + element.innerText + '\' label';
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
@@ -340,6 +367,15 @@
             interaction = logInteraction(identifier, identifierValue, userAction, '', description);
             logAndSetUserActivity(interaction);
         } 
+        else if(eventType === 'custom_click') // click useraction  -- alt+c -> used when focus needs to be shifted.
+        {
+            console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
+
+            if(eventType === 'custom_click')
+                interaction.User_Action = 'click';
+
+            logAndSetUserActivity(interaction);
+        }
         else if ((type === 'button' || type === 'img') && eventType !== 'scroll')
         {
             if(eventType === 'click') // for 'click' user action there should not be data inside data_column
@@ -363,19 +399,7 @@
             // isenable user action - ctrl+9
             // clear user action shift+2
             // highlight user action 'shift + 3'
-            console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
-
-            if(eventType === 'custom_click')
-                interaction.User_Action = 'click';
-
-            logAndSetUserActivity(interaction);
-        }
-        else if(eventType === 'custom_click') // click useraction  -- alt+c -> used when focus needs to be shifted.
-        {
-            console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
-
-            if(eventType === 'custom_click')
-                interaction.User_Action = 'click';
+            // console.log(`content.js -> logInteractionEvent() -> ${eventType}` );
 
             logAndSetUserActivity(interaction);
         }
@@ -385,13 +409,13 @@
             interaction = logInteraction(identifier, identifierValue, 'click', '', description);
             logAndSetUserActivity(interaction);
         }
-        else if(eventType === 'click' && action === 'verify') // added to capture server side validations like 'Save Successful.'
+        else if(eventType === 'click' && action === 'verify')
         {
             dataColumn = '';
             interaction = logInteraction(identifier, identifierValue, 'verify', '', description);
             logAndSetUserActivity(interaction);
         }
-        else if(eventType === 'dblclick' && action === 'click') // added to capture server side validations like 'Save Successful.'
+        else if(eventType === 'dblclick' && action === 'click')
         {
             dataColumn = '';
             interaction = logInteraction(identifier, identifierValue, 'click', '', description);
@@ -412,11 +436,11 @@
     }
 
      // Function to check if XPath points to a unique element
-     function isUniqueXPath(xpath) 
+     function isUniqueXPath(xpath, eleDoc) // eleDoc - Element's Document 
      {
          try 
          {   // Evaluate XPath and check if there's only one matching element
-             var result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+             var result = document.evaluate(xpath, eleDoc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
              return result.snapshotLength === 1;
          } catch (error) {
              return false;
@@ -435,32 +459,39 @@
             if (value) 
             {
                 var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '"]';
-                if (isUniqueXPath(xpathWithAttr) && xpathWithAttr) 
+                if (isUniqueXPath(xpathWithAttr, element.ownerDocument) && xpathWithAttr) 
                 {
                     return xpathWithAttr;
-                }
-                else
+                } 
+            }
+        }
+
+        // try to find xpath using combinations of attribute values
+        for (var i = 0; i < attributes.length; i++) 
+        {
+            var attribute = attributes[i];
+            var value = element.getAttribute(attribute);
+
+            // To fetch efficient x-path - Use Logical Operator -> and (refer -> //*[@id='msPt_fname' and @type='text'])
+            if(i < attributes.length )
+            {
+                for(var j = i + 1; j < attributes.length; j++) // to optimize for loop value of j has been set to i+1 
                 {
-                    // To fetch efficient x-path - Use Logical Operator -> and (refer -> //*[@id='msPt_fname' and @type='text'])
-                    if(i < attributes.length )
+                    var attrToMatch  = attributes[j];
+                    var valueToMatch = element.getAttribute(attrToMatch);
+                    if(valueToMatch)
                     {
-                        for(var j = i + 1; j < attributes.length; j++) // to optimize for loop value of j has been set to i+1 
+                        var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '" and @' + attrToMatch + '="' + valueToMatch + '"]';
+                        if (isUniqueXPath(xpathWithAttr, element.ownerDocument)  && xpathWithAttr) 
                         {
-                            var attrToMatch  = attributes[j];
-                            var valueToMatch = element.getAttribute(attrToMatch);
-                            if(valueToMatch)
-                            {
-                                var xpathWithAttr = '//' + element.tagName.toLowerCase() + '[@' + attribute + '="' + value + '" and @' + attrToMatch + '="' + valueToMatch + '"]';
-                                if (isUniqueXPath(xpathWithAttr)  && xpathWithAttr) 
-                                {
-                                    return xpathWithAttr;
-                                }
-                            }
+                            return xpathWithAttr;
                         }
                     }
                 }
             }
+
         }
+
 
         // If all previous attempts failed, then 
         // Function to generate XPath for the element
@@ -561,8 +592,8 @@
 
             doc.addEventListener('keydown', handleKeyEvents);
 
-            doc.addEventListener('dblclick', handleDblClik); // added to handle - scrollto and verify useraction
-            doc.addEventListener('click', handleClickOnRows) //  to click on rows we use this
+            doc.addEventListener('dblclick', handleDblClik); // added to handle - scrollto and doubleclick useraction
+            doc.addEventListener('click', handleClickOnRows) //  to click on rows(span tags) we use this
 
             // actionMessages --> to fetch server side validation like -> Save Successful.
             // popupHeaderText --> to fetch the title of the gensearch
@@ -730,6 +761,14 @@
     // To handle the shortCut Keys
     function handleKeyEvents(event) 
     {
+        // this will invoke the small info div which show shortKeys
+        if (event.ctrlKey)
+            sortTableByKey('ctrl');// Sort the table to show 'Ctrl' shortcuts first
+        else if (event.altKey)            
+            sortTableByKey('alt');// Sort the table to show 'Alt' shortcuts
+        else if (event.shiftKey)
+            sortTableByKey('shift');// Sort the table to show 'Shift' shortcuts
+
         if (event.ctrlKey && event.key === "3") 
         {
             logInteractionEvent('', 'wait', 'wait', null);
@@ -910,11 +949,8 @@
     // to handle scrollto and verify useractions
     function handleDblClik(event)
     {
-        // press and hold ctrl key or altKey and then double click on lable or any element then these user actions will fire up
-        if (event.ctrlKey) {
-            logInteractionEvent(getElementType(event.target), 'dblclick', 'verify', event.target);
-        }
-        else if(event.altKey){
+        // press and hold shift key or altKey and then double click on lable or any element then these user actions will fire up
+        if(event.altKey){
             logInteractionEvent(getElementType(event.target), 'dblclick', 'scrollto', event.target);
         }
         else if(event.shiftKey){
@@ -928,6 +964,153 @@
         if(event.shiftKey){ // for click event on tr/td/span etc tags
             logInteractionEvent(getElementType(event.target), 'click', 'clickOnRow', event.target);
         }
+        else if (event.ctrlKey) { // click on 
+            logInteractionEvent(getElementType(event.target), 'ctrl+click', 'verify', event.target);
+        }
+    }
+
+    // create a popup/win/div which will show shortKey combinations 
+    // this will appear whenever user presses ctrl key or shift key
+    function createHiDivShadow(shortcuts) 
+    {
+        // Create a container element to attach the shadow DOM
+        let shadowHost = document.createElement('div');
+        shadowHost.style.position = 'absolute';
+        shadowHost.style.right = '10px';
+        shadowHost.style.top = '10px';
+        shadowHost.style.pointerEvents = 'none'; 
+        shadowHost.style.zIndex = '9999';
+    
+        // Attach a shadow root to the shadowHost
+        let shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+
+        // Create table container
+        const tableContainer = document.createElement('div');
+        // tableContainer.style.backgroundColor = 'yellow';
+        // tableContainer.style.border = '1px solid black';
+
+        const style = document.createElement('style');
+        style.type = 'text/css';
+        let cssDet = `body {
+                        font-family:  Verdana, sans-serif;
+                        background-color: #404040;
+                        margin: 0;
+                        padding: 20px;
+                    }
+
+                    table {
+                        width: 80%;
+                        margin: 0 auto;
+                        border-collapse: collapse;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        background-color: #282828;
+                    }
+
+                    thead {
+                        background-color: #121212;
+                    }
+
+                    thead th {
+                        color: #9ccfff;
+                        text-align: left;
+                        padding: 12px;
+                        font-weight: normal;
+                        font-size: 16px;
+                    }
+
+                    tbody tr {
+                        border-bottom: 1px solid #e0e0e0;
+                    }
+
+                    tbody tr:hover {
+                        background-color: #404040;
+                    }
+
+                    tbody td {
+                        padding: 10px;
+                        text-align: left;
+                        font-size: 14px;
+                        color: #ffffb9 ;
+                    }
+
+                    tbody tr:nth-child(even) {
+                        background-color: #181818;
+                    }`;
+        style.appendChild(document.createTextNode(cssDet));
+        tableContainer.appendChild(style); 
+
+        // Create the table element
+        const table = document.createElement('table');
+        table.id = 'shortcutTable';
+
+        // Create table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const th1 = document.createElement('th');
+        th1.innerText = 'Short-Key';
+        const th2 = document.createElement('th');
+        th2.innerText = 'User-Action';
+        headerRow.appendChild(th1);
+        headerRow.appendChild(th2);
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create the table body
+        const tbody = document.createElement('tbody');
+        tbody.innerHTML = ''; // Clear the table before repopulating
+
+        // Loop through the shortcut data and create rows
+        for (const [key, action] of Object.entries(shortcuts)) 
+        {
+            const row = document.createElement('tr');
+            const shortKeyCell = document.createElement('td');
+            const actionCell = document.createElement('td');
+
+            shortKeyCell.textContent = key;
+            actionCell.textContent = action;
+
+            row.appendChild(shortKeyCell);
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        }
+        
+        table.appendChild(tbody);
+
+        // Append table to the document body
+        tableContainer.appendChild(table);   
+        shadowRoot.appendChild(tableContainer);
+
+        // Add the shadowHost (which includes the shadow DOM) to the body
+        document.body.appendChild(shadowHost);
+
+    
+        // Remove the shadowHost after 2 seconds
+        setTimeout(function() {
+            document.body.removeChild(shadowHost);
+        }, 2000);
+    }
+
+    // Function to sort the table based on key pressed
+    function sortTableByKey(pressedKey) 
+    {
+        // Create a sorted version of the JSON based on the pressed key
+        const sortedShortcuts = {};
+        
+        // Separate the keys that match the pressed key (e.g., 'Ctrl') from the others
+        for (const [key, action] of Object.entries(shortcutData)) {
+            if (key.startsWith(pressedKey))
+                sortedShortcuts[key] = action;
+        }
+
+        // Add the rest of the keys after the sorted ones
+        // for (const [key, action] of Object.entries(shortcutData)) {
+        //     if (!key.startsWith(pressedKey)) 
+        //         sortedShortcuts[key] = action;
+        // }
+
+        // Re-generate the table with the sorted shortcuts
+        createHiDivShadow(sortedShortcuts);
     }
 })
 ();
@@ -947,3 +1130,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ status: 'success', data:  logInteractions});
     }
 });
+
